@@ -1,6 +1,24 @@
-const qrcode = require("qrcode-terminal");
-const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
-const { executablePath } = require("puppeteer");
+import qrcode from "qrcode-terminal";
+import pkg from 'whatsapp-web.js';
+const { Client, LocalAuth, MessageMedia } = pkg;
+import { executablePath } from "puppeteer";
+import mysql from 'mysql2/promise';
+const aguardandoCPF = new Set();
+
+
+// Criação da conexão com o banco
+const pool = mysql.createPool({
+	host: '10.14.205.9',
+	user: 'root',
+	password: '123456',
+	database: 'sisgep',
+	waitForConnections: true,
+	connectionLimit: 10,
+	queueLimit: 0
+      });
+      
+// Exporte o pool usando export
+export default pool;
 
 // Configuração do WhatsApp
 const client = new Client({
@@ -40,7 +58,7 @@ const getMenuPrincipal = () => `
 
 Por favor, digite o número correspondente à opção desejada:
 
-1 - 🔐 *Segurança* (Rol de Visitas / Sedex / E-mail)  
+1 - 🔐 *Segurança* (Consultar Carteirinha / Rol de Visitas / Sedex/Jumbo)  
 2 - 💰 *Pecúlio* (Depósitos / Retiradas)  
 3 - 📄 *SIMIC* (Saída Temporária / Auxílio Reclusão)  
 4 - 📝 *CRAS* (Registros de Paternidade / Óbitos)  
@@ -116,19 +134,24 @@ Segue o arquivo PDF contendo todas as orientações sobre os itens referentes à
 },
 	'14': async (chat, msg) => {
 		await sendWithTyping(chat, msg.from, `
-📬 *15 - CONEXÃO FAMILIAR*
+📬 *14 - CONEXÃO FAMILIAR*
 
 🆕 *NOVIDADES DO PROGRAMA CONEXÃO FAMILIAR*
 
 📌 *Nova regra sobre CORRESPONDÊNCIAS VIRTUAIS:*
 
 ✉️ *Troca de Mensagens Eletrônicas:*  
-Será permitido envio de *01 (uma)* mensagem (e-mail) por semana.  
-O retorno da mensagem (e-mail) será enviado para os visitantes no prazo de *05 (cinco)* dias corridos, a partir da data de recebimento na Unidade Prisional.
+Será permitido envio de *01 (uma)* mensagem (e-mail) por mês.  
+ O/A visitante receberá por e-mail a confirmação do recebimento pelo reeducando. *NÃO HAVERÁ OUTRA RESPOSTA*, apenas a confirmação do recebimento da mensagem.
 
 🔗 Para mais informações sobre o programa Conexão Familiar, acesse:  
 https://www1.sap.sp.gov.br/conexao-familiar.html#top
 	`);
+	},
+
+	'15': async (chat, msg) => {
+		await sendWithTyping(chat, msg.from, '🪪 *Digite o CPF do visitante (somente números):*');
+		aguardandoCPF.add(msg.from);
 	}
 };
 
@@ -256,7 +279,7 @@ Encaminhar para o e-mail *saude@cdpsor.sap.sp.gov.br* os seguintes documentos:
 Após o envio, será confeccionada uma declaração a ser levada ao cartório. O documento deverá ser retirado na unidade.
 
 📌 *Criança já registrada apenas pela mãe*  
-Encaminhar para o e-mail *saude@cdpsor.sap.sp.gov.br* os seguintes documentos:  
+Encaminhar para o e-mail *reintegracao@p2sorocaba.sap.sp.gov.br* os seguintes documentos:  
 - Certidão de nascimento da criança;  
 - RG da mãe;  
 - RG do pai (se tiver);  
@@ -270,7 +293,7 @@ Encaminhar para o e-mail *saude@cdpsor.sap.sp.gov.br* os seguintes documentos:
 	'42': async (chat, msg) => {
 		const texto = `🪦 *ÓBITOS FAMILIARES:*
 
-Deverá encaminhar e-mail para: *saude@cdpsor.sap.sp.gov.br* com os seguintes dados:  
+Deverá encaminhar e-mail para: *reintegracao@p2sorocaba.sap.sp.gov.br* com os seguintes dados:  
 - Certidão ou declaração de óbito;  
 - Data, local e horário do féretro e sepultamento;  
 - Telefone da funerária responsável.
@@ -291,7 +314,7 @@ Poderá haver saída do sentenciado, mediante escolta ou autorização judicial,
 		const texto = `🧠 *ASSISTÊNCIA SOCIAL / PSICOLOGIA:*
 
 Em caso de dúvidas ou necessidade de atendimento, encaminhar e-mail para:  
-📧 *saude@cdpsor.sap.sp.gov.br*`;
+📧 *reintegracao@p2sorocaba.sap.sp.gov.br*`;
 		
 		await sendWithTyping(chat, msg.from, texto);
 	}
@@ -334,7 +357,7 @@ Para realizar o agendamento, siga as instruções abaixo:
 Solicitações devem ser feitas por e-mail, com envio da *cópia da OAB* e *Procuração*.
 
 📌 *Contatos específicos:*  
-- *Boletim Informativo / Atestado de Conduta* (Setor CIMIC): *cimic@cdpsor.sap.sp.gov.br*  
+- *Boletim Informativo / Atestado de Conduta* (Setor SIMIC): *cimic@cdpsor.sap.sp.gov.br*  
 - *Atestados / Grade de Remissão por Trabalho ou Estudo*: *trabalhoeducacao@cdpsor.sap.sp.gov.br*  
 - *Outras solicitações gerais*: *cdpsor@cdpsor.sap.sp.gov.br*`;
 		
@@ -350,9 +373,8 @@ client.on("message", async (msg) => {
 	const messageBody = msg.body.toLowerCase();
 
 	// Saudação inicial
-	if (/\b(dia|tarde|noite|oi|olá|ola|oii|oie|preciso|informação|informacao)\b/i.test(messageBody)) {
+	if (/\b(dia|tarde|noite|oi|Oi|olá|Olá|ola|Ola|oii|oie|preciso|informação|informacao|informação|ajuda)\b/i.test(messageBody)) {
 		const contact = await msg.getContact();
-		const name = contact.pushname;
 
 		await sendWithTyping(chat, msg.from, `👋 *Olá! Sou o assistente virtual do Centro de Detenção Provisória de Sorocaba.*
 
@@ -379,6 +401,7 @@ Não acessamos as mensagens e não atendemos ligações realizadas via aplicativ
 12 - 🧾 Cadastro de Visitantes  
 13 - 📦 Sedex e Cartas  
 14 - 📞 Conexão Familiar
+15 - 🪪 Consultar Carteirinha
 		`);
 		return;
 	}
@@ -461,6 +484,7 @@ Não acessamos as mensagens e não atendemos ligações realizadas via aplicativ
 		return;
 	}
 
+	// Opção 6 - Telefones e endereços
 	if (messageBody === '6') {
 		await sendWithTyping(chat, msg.from, `
 📞 *TELEFONES E ENDEREÇO*
@@ -482,7 +506,7 @@ Ao ligar, digite a opção desejada:
 📧 *E-mails funcionais:*  
 • Rol de Visitas: roldevisitas@cdpsor.sap.sp.gov.br  
 • Pecúlio: peculio@cdpsor.sap.sp.gov.br  
-• Assistente Social: saude@cdpsor.sap.sp.gov.br  
+• Assistente Social: reintegracao@p2sorocaba.sap.sp.gov.br  
 • CIMIC: cimic@cdpsor.sap.sp.gov.br  
 
 📍 *Endereço:*  
@@ -491,7 +515,44 @@ Aparecidinha - Sorocaba/SP – CEP 18.087-210
 📌 Localização: https://goo.gl/maps/qCTQ2CBJs92mCYww5  
 
 🌐 *Site da SAP:*  
-https://www.sap.sp.gov.br/`);		
+https://www.sap.sp.gov.br/`);
+return;		
 	}
+
+if (aguardandoCPF.has(msg.from) && /^\d{11}$/.test(messageBody)) {
+	aguardandoCPF.delete(msg.from);
+
+	try {
+		// Executando a consulta e pegando o primeiro resultado diretamente
+		const [rows] = await pool.execute(
+			`SELECT Nome_Visi FROM visitantes_cad WHERE Cpf_Visi = ? AND AUTORIZA = 'A' AND Status_Visi = 'A' LIMIT 1`,
+			[messageBody]
+		);
+
+		// Verificando se a consulta retornou um resultado
+		if (rows.length > 0) {
+			const nome = rows[0].Nome_Visi ?? 'Visitante'; // Acessando diretamente o nome
+			await sendWithTyping(chat, msg.from, `✅ *Carteirinha encontrada!*  
+👤 *Nome:* ${nome}  
+📄 *Situação:* Emitida e autorizada para visitação.`);
+		} else {
+			await sendWithTyping(chat, msg.from, `⚠️ *Nenhuma carteirinha autorizada foi encontrada com esse CPF.*  
+Verifique se o cadastro foi realizado corretamente ou aguarde a liberação.`);
+		}
+	} catch (err) {
+		// Log detalhado do erro
+		console.error('Erro ao consultar carteirinha:', err);
+		await sendWithTyping(chat, msg.from, '❌ Ocorreu um erro ao consultar a carteirinha. Tente novamente mais tarde.');
+	}
+
+	return;
+}
+	
+		
+
+	// Resposta padrão para mensagens não reconhecidas
+	await sendWithTyping(chat, msg.from, `❌ Não entendi sua mensagem.  
+Digite *menu* para acessar o menu principal.
+Lembrando que este whatsapp *NÃO ATENDE LIGAÇÕES*, pois opera de forma automatizada!`);
 
 });
