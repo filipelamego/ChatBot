@@ -4,6 +4,7 @@ const { Client, LocalAuth, MessageMedia } = pkg;
 import { executablePath } from "puppeteer";
 import mysql from 'mysql2/promise';
 const aguardandoCPF = new Set();
+const aguardandoMatricula = new Set();
 
 
 // Criação da conexão com o banco
@@ -149,10 +150,19 @@ https://www1.sap.sp.gov.br/conexao-familiar.html#top
 	`);
 	},
 
+	// Solicita o CPF da visita para consulta
 	'15': async (chat, msg) => {
 		await sendWithTyping(chat, msg.from, '🪪 *Digite o CPF do visitante (somente números):*');
 		aguardandoCPF.add(msg.from);
+	},
+
+	// Solicita a matrícula para consultar no banco
+	'16': async (chat, msg) => {
+	await sendWithTyping(chat, msg.from, '👤 *Digite a matrícula do detento (somente números, sem o dígito):*');
+	aguardandoMatricula.add(msg.from);
 	}
+
+
 };
 
 // Submenus da opção 2 - Pecúlio
@@ -402,6 +412,7 @@ Não acessamos as mensagens e não atendemos ligações realizadas via aplicativ
 13 - 📦 Sedex e Cartas  
 14 - 📞 Conexão Familiar
 15 - 🪪 Consultar Carteirinha
+16 - 👤 Consultar Detento
 		`);
 		return;
 	}
@@ -547,6 +558,38 @@ Verifique se o cadastro foi realizado corretamente ou aguarde a liberação.`);
 
 	return;
 }
+
+// Realiza a consulta no banco se o preso ainda está na unidade.
+if (aguardandoMatricula.has(msg.from) && /^\d{5,10}$/.test(messageBody)) {
+	aguardandoMatricula.delete(msg.from);
+
+	try {
+		// Ajuste os nomes das colunas e tabela conforme sua base de dados
+		const [rows] = await pool.execute(
+			`SELECT Pav_Cel, Cela_Cel FROM celas 
+			 WHERE LEFT(Matric_Cel, LENGTH(Matric_Cel) - 1) = ? 
+			 AND Dl_Cel = '+' AND Fim_Cel IS NULL 
+			 LIMIT 1`,
+			[messageBody]
+		      );
+
+		if (rows.length > 0) {
+			const preso = rows[0];
+				await sendWithTyping(chat, msg.from, `✅ *Detento encontrado:*   
+ 📌 *Ala:* ${preso.Pav_Cel}  
+ 📌 *Cela:* ${preso.Cela_Cel}`);
+		} else {
+			await sendWithTyping(chat, msg.from, `⚠️ *Detento não encontrado na unidade.*  
+Verifique se a matrícula está correta ou se o sentenciado foi transferido.`);
+		}
+	} catch (err) {
+		console.error('Erro ao consultar sentenciado:', err);
+		await sendWithTyping(chat, msg.from, '❌ Ocorreu um erro ao consultar o sentenciado. Tente novamente mais tarde.');
+	}
+
+	return;
+}
+
 	
 		
 
