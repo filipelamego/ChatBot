@@ -580,7 +580,8 @@ if (aguardandoMatricula.has(msg.from) && /^\d{5,10}$/.test(messageBody)) {
  📌 *Cela:* ${preso.Cela_Cel}`);
 		} else {
 			await sendWithTyping(chat, msg.from, `⚠️ *Detento não encontrado na unidade.*  
-Verifique se a matrícula está correta ou se o detento foi transferido.`);
+Verifique se a matrícula está correta ou se o detento foi transferido.
+Lembrando, ao digitar a matrícula, NÃO DIGITE O DÍGITO, PONTOS OU TRAÇOS!`);
 		}
 	} catch (err) {
 		console.error('Erro ao consultar detento:', err);
