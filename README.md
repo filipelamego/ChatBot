@@ -21,5 +21,5 @@ O bot realiza atendimento automatizado com menus interativos e integração com 
 - MySQL (`mysql2/promise`)
 - Puppeteer (para automação de navegação e geração de PDFs, se necessário)
 
-Desenvolvido por - Filipe Lamego
+Desenvolvido por - Filipe Lamego - 
 Analista e Desenvolvedor de Sistemas
