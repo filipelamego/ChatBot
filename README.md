@@ -7,7 +7,7 @@ O bot realiza atendimento automatizado com menus interativos e integração com 
 
 - Conexão com o WhatsApp via Web
 - Menus interativos com submenus personalizados
-- Consulta e registro de informações no banco de dados MySQL
+- Consulta de informações no banco de dados MySQL
 - Envio de mensagens de texto e arquivos PDF
 - Solicitação de dados do usuário (CPF, matrícula, etc.)
 - Integração com serviços diversos.
