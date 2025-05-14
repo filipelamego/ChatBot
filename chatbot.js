@@ -152,13 +152,13 @@ https://www1.sap.sp.gov.br/conexao-familiar.html#top
 
 	// Solicita o CPF da visita para consulta
 	'15': async (chat, msg) => {
-		await sendWithTyping(chat, msg.from, '🪪 *Digite o CPF do visitante (somente números):*');
+		await sendWithTyping(chat, msg.from, '🪪 *Digite o CPF do visitante (somente números, SEM PONTOS OS TRAÇOS):*');
 		aguardandoCPF.add(msg.from);
 	},
 
 	// Solicita a matrícula para consultar no banco
 	'16': async (chat, msg) => {
-	await sendWithTyping(chat, msg.from, '👤 *Digite a matrícula do detento (somente números, sem o dígito):*');
+	await sendWithTyping(chat, msg.from, '👤 *Digite a matrícula do detento (somente números, SEM O DÍGITO):*');
 	aguardandoMatricula.add(msg.from);
 	}
 
@@ -278,7 +278,7 @@ const opcoesCRAS = {
 		const texto = `👶 *ORIENTAÇÕES PARA RECONHECIMENTO DE PATERNIDADE - RECÉM-NASCIDO OU JÁ REGISTRADO:*
 
 📌 *Recém-nascido (registro ainda não feito)*  
-Encaminhar para o e-mail *saude@cdpsor.sap.sp.gov.br* os seguintes documentos:  
+Encaminhar para o e-mail *reintegracao@p2sorocaba.sap.sp.gov.br* os seguintes documentos:  
 - Declaração de nascido vivo (folha amarela);  
 - RG da mãe;  
 - RG do pai (se tiver);  
@@ -547,7 +547,7 @@ if (aguardandoCPF.has(msg.from) && /^\d{11}$/.test(messageBody)) {
 👤 *Nome:* ${nome}  
 📄 *Situação:* Emitida e autorizada para visitação.`);
 		} else {
-			await sendWithTyping(chat, msg.from, `⚠️ *Nenhuma carteirinha autorizada foi encontrada com esse CPF.*  
+			await sendWithTyping(chat, msg.from, `⚠️ *Nenhuma carteirinha emitida para esse CPF.*  
 Verifique se o cadastro foi realizado corretamente ou aguarde a liberação.`);
 		}
 	} catch (err) {
@@ -564,7 +564,7 @@ if (aguardandoMatricula.has(msg.from) && /^\d{5,10}$/.test(messageBody)) {
 	aguardandoMatricula.delete(msg.from);
 
 	try {
-		// Ajuste os nomes das colunas e tabela conforme sua base de dados
+		// Realiza a consulta no banco de dados
 		const [rows] = await pool.execute(
 			`SELECT Pav_Cel, Cela_Cel FROM celas 
 			 WHERE LEFT(Matric_Cel, LENGTH(Matric_Cel) - 1) = ? 
@@ -580,18 +580,15 @@ if (aguardandoMatricula.has(msg.from) && /^\d{5,10}$/.test(messageBody)) {
  📌 *Cela:* ${preso.Cela_Cel}`);
 		} else {
 			await sendWithTyping(chat, msg.from, `⚠️ *Detento não encontrado na unidade.*  
-Verifique se a matrícula está correta ou se o sentenciado foi transferido.`);
+Verifique se a matrícula está correta ou se o detento foi transferido.`);
 		}
 	} catch (err) {
-		console.error('Erro ao consultar sentenciado:', err);
-		await sendWithTyping(chat, msg.from, '❌ Ocorreu um erro ao consultar o sentenciado. Tente novamente mais tarde.');
+		console.error('Erro ao consultar detento:', err);
+		await sendWithTyping(chat, msg.from, '❌ Ocorreu um erro ao consultar o detento. Tente novamente mais tarde.');
 	}
 
 	return;
 }
-
-	
-		
 
 	// Resposta padrão para mensagens não reconhecidas
 	await sendWithTyping(chat, msg.from, `❌ Não entendi sua mensagem.  
